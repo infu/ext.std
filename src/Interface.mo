@@ -54,6 +54,6 @@ module {
         // Returns the amount which the given spender is allowed to withdraw from the given owner.
         allowance : query (request : Ext.Allowance.Request)         -> async Ext.Allowance.Response;
         // Allows the given spender to withdraw from your account multiple times, up to the given allowance.
-        approve   : shared (request : Ext.Allowance.ApproveRequest) -> async ();
+        approve   : shared (request : Ext.Allowance.ApproveRequest) -> async Ext.Allowance.ApproveResponse;
     };
 };

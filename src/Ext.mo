@@ -8,6 +8,7 @@ import CRC32 "mo:hash/CRC32";
 import Hash "mo:base/Hash";
 import Hex "mo:encoding/Hex";
 import Iter "mo:base/Iter";
+import Time "mo:base/Time";
 import Nat8 "mo:base/Nat8";
 import Nat32 "mo:base/Nat32";
 import Principal "mo:principal/Principal";
@@ -135,6 +136,15 @@ module {
             CommonError
         >;
 
+        public type BurnRequest = {
+            user       : User;
+            token      : TokenIdentifier;
+            amount     : Balance;
+            memo       : Memo;
+            notify     : Bool;
+            subaccount : ?SubAccount;
+        };
+        
         public type TransferRequest = {
             from       : User;
             to         : User;
@@ -153,6 +163,8 @@ module {
             #CannotNotify : AccountIdentifier;
             #Other        : Text;
         }>;
+
+        public type BurnResponse = TransferResponse;
     };
 
     public module Common = {
@@ -165,9 +177,26 @@ module {
             };
 
             #nonfungible : {
-                metadata : ?Blob;
+                metadata : Blob;
+                // class: Nat32;
+   
+                created: Time.Time;
+                // opened: Time.Time;
+                // rarity: Nat8;
+                // random: Nat32;
+                TTL: ?Nat32; // in minutes
+                minter : AccountIdentifier; 
             };
         };
+
+        // public type NFClass = {
+        //     thumb
+        //     issuer
+        //     vistype
+        //     visurl
+        //     pkgimage
+
+        // }
 
         public type MetadataResponse = Result.Result<
             Metadata,
@@ -188,11 +217,18 @@ module {
 
         public type MintRequest = {
             to       : User;
-            metadata : ?Blob;
+            metadata : Blob;
+            minter   : AccountIdentifier;
+            TTL      : ?Nat32;
         };
 
         public type MintResponse = Result.Result<
            TokenIndex,
+           CommonError
+        >;
+
+        public type MintBatchResponse = Result.Result<
+           [TokenIndex],
            CommonError
         >;
     };
@@ -215,5 +251,16 @@ module {
             allowance  : Balance;
             token      : TokenIdentifier;
         };
+
+        public type ApproveResponse = Result.Result<
+            (),
+            {
+            #Other        : Text;
+            #InvalidToken : TokenIdentifier;
+            #Unauthorized : AccountIdentifier;
+            #InsufficientBalance;
+            }
+        >;
+
     };
 };
