@@ -167,39 +167,82 @@ module {
         public type BurnResponse = TransferResponse;
     };
 
-    public module Common = {
-        public type Metadata = {
-            #fungible : {
-                name     : Text;
-                symbol   : Text;
-                decimals : Nat8;
-                metadata : ?Blob;
+    public type ItemClassId = Nat;
+        public type Chunks = [Nat32];
+
+        public type Media = Text;
+
+
+        public type ItemUse = {
+            #cooldown: {
+                desc: Text;
+                cannister: Principal;
+                duration: Nat32;
             };
 
-            #nonfungible : {
-                metadata : Blob;
-                // class: Nat32;
-   
-                created: Time.Time;
-                // opened: Time.Time;
-                // rarity: Nat8;
-                // random: Nat32;
-                TTL: ?Nat32; // in minutes
-                minter : AccountIdentifier; 
+            #consumable : {
+                desc: Text;
+                cannister: Principal;
             };
         };
 
-        // public type NFClass = {
-        //     thumb
-        //     issuer
-        //     vistype
-        //     visurl
-        //     pkgimage
+    
+        public type ItemTransfer = {
+           #unrestricted;
+           #bindsForever;
+           #bindsDuration: Nat32;
+        };
 
-        // }
+    
+        public type ItemClass = {
+            content: ?Media;
+            thumb: Media;
+            name: Text;
+            lore: Text;
+            quality: Nat8;
+            use: ?ItemUse;
+            hold: ?Text;
+            transfer: ?ItemTransfer;
+            ttl: ?Nat32; // time to live
+            minter: Principal;
+            maxTokens: ?Nat32;
+            var totalTokens: Nat32;
+        };
+
+        public type Metadata = {
+            content: ?Media;
+            thumb: ?Media;    // may overwrite class
+            classId: ItemClassId;
+            entropy: Blob;
+            created: Nat32; // in minutes
+            var boundUntil: ?Nat32; // in minutes
+            var cooldownUntil: ?Nat32; // in minutes
+        };
+
+        public func MetaToOut(a:Metadata) : MetadataOut {
+            {
+            content= a.content;
+            thumb= a.thumb;
+            classId= a.classId;
+            entropy= a.entropy;
+            created= a.created;
+            boundUntil= a.boundUntil;
+            cooldownUntil= a.cooldownUntil;
+            }
+        };
+
+        public type MetadataOut = {
+                content: ?Media;
+                thumb:?Media;
+                classId: ItemClassId;
+                entropy: Blob;
+                created: Nat32;
+                boundUntil: ?Nat32;
+                cooldownUntil:?Nat32;
+        };
 
         public type MetadataResponse = Result.Result<
-            Metadata,
+            MetadataOut,
             CommonError
         >;
 
@@ -207,7 +250,7 @@ module {
             Balance,
             CommonError
         >;
-    };
+  
 
     public module NonFungible = {
         public type BearerResponse = Result.Result<
@@ -217,14 +260,29 @@ module {
 
         public type MintRequest = {
             to       : User;
-            metadata : Blob;
-            minter   : AccountIdentifier;
-            TTL      : ?Nat32;
+            classId: ItemClassId;   
+            // media: ?Media;
+            // thumb: ?URL;    
         };
 
+        public type UploadChunkRequest =  {
+           tokenIndex: TokenIndex;
+           position : {#content; #thumb};
+           chunkIdx : Nat32;
+           data : Blob;
+        };
+
+        public type FetchChunkRequest =  {
+           tokenIndex: TokenIndex;
+           position : {#content; #thumb};
+           chunkIdx : Nat32;
+        };
+        
         public type MintResponse = Result.Result<
-           TokenIndex,
-           CommonError
+           TokenIndex, {
+            #Rejected;
+            #OutOfMemory;
+          }
         >;
 
         public type MintBatchResponse = Result.Result<

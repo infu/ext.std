@@ -17,9 +17,9 @@ module {
         // [@ext:common]
 
         // Returns the metadata of the token.
-        metadata : query (tokenId : Ext.TokenIdentifier) -> async Ext.Common.MetadataResponse;
+        metadata : query (tokenId : Ext.TokenIdentifier) -> async Ext.MetadataResponse;
         // Returns the total supply of the token.
-        supply   : query (tokenId : Ext.TokenIdentifier) -> async Ext.Common.SupplyResponse;
+        supply   : query (tokenId : Ext.TokenIdentifier) -> async Ext.SupplyResponse;
     };
 
     // A basic nft interface, used for f.e. ERC721 tokens.
@@ -38,9 +38,9 @@ module {
         // [@ext:common]
 
         // Returns the metadata of the given token.
-        metadata : query (token : Ext.TokenIdentifier) -> async Ext.Common.MetadataResponse;
+        metadata : query (token : Ext.TokenIdentifier) -> async Ext.MetadataResponse;
         // Returns the total supply of the token.
-        supply   : query (token : Ext.TokenIdentifier) -> async Ext.Common.SupplyResponse;
+        supply   : query (token : Ext.TokenIdentifier) -> async Ext.SupplyResponse;
 
         // [@ext:nonfungible]
 
