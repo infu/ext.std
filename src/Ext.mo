@@ -169,80 +169,112 @@ module {
 
     public type ItemClassId = Nat;
         public type Chunks = [Nat32];
-
-        public type Media = Text;
+        public type ContentType = Text;
+        public type ExternalRenderer = Principal;
+        public type Content = {
+            #internal: {
+                contentType: ContentType;
+                size: Nat32;
+                };
+            #external: {
+                contentType: ContentType;
+                idx: ?Nat32;
+                };
+            // #ipfs: Text;
+            };
 
 
         public type ItemUse = {
             #cooldown: {
                 desc: Text;
-                cannister: Principal;
                 duration: Nat32;
+                useId: Text;
             };
 
             #consumable : {
                 desc: Text;
-                cannister: Principal;
+                useId: Text;
             };
         };
 
+        public type ItemHold = {
+             #external: {
+                desc: Text;
+                holdId: Text;
+             }
+        };
     
         public type ItemTransfer = {
-           #unrestricted;
-           #bindsForever;
-           #bindsDuration: Nat32;
+            #unrestricted;
+            #bindsForever;
+            #bindsDuration: Nat32;
         };
 
-    
-        public type ItemClass = {
-            content: ?Media;
-            thumb: Media;
-            name: Text;
-            lore: Text;
-            quality: Nat8;
-            use: ?ItemUse;
-            hold: ?Text;
-            transfer: ?ItemTransfer;
-            ttl: ?Nat32; // time to live
-            minter: Principal;
-            maxTokens: ?Nat32;
-            var totalTokens: Nat32;
-        };
+        public type Attribute = (Text, Int16);
 
         public type Metadata = {
-            content: ?Media;
-            thumb: ?Media;    // may overwrite class
-            classId: ItemClassId;
+        
+            name: ?Text;
+            lore: ?Text;
+            quality: ?Nat8;
+            use: ?ItemUse;
+            hold: ?ItemHold;
+            transfer: ?ItemTransfer;
+            ttl: ?Nat32; // time to live
+            minter: ?Principal;
+            extensionCanister: ?Principal;
+            secret: Bool;
+            content: ?Content;
+            thumb: Content;    // may overwrite class
             entropy: Blob;
             created: Nat32; // in minutes
+            attributes: [Attribute];
+            level: Nat8; // 0,1,2; 0lvl doesn't have parent. 1lvl has 0lvl parent; 2lvl has 1lvl parent;
+           
+        };
+
+        public type MetadataInput = {
+        
+            name: ?Text;
+            lore: ?Text;
+            quality: ?Nat8;
+            use: ?ItemUse;
+            hold: ?ItemHold;
+            secret: Bool;
+            transfer: ?ItemTransfer;
+            attributes: [Attribute];
+            ttl: ?Nat32;
+            content: ?Content;
+            thumb: Content; 
+            extensionCanister: ?Principal;
+            // parentId: ?TokenIdentifier;
+            // maxChildren: ?Nat32;
+        };
+
+        public type Metavars = {
+            // var totalChildren: Nat32;
             var boundUntil: ?Nat32; // in minutes
             var cooldownUntil: ?Nat32; // in minutes
         };
 
-        public func MetaToOut(a:Metadata) : MetadataOut {
+        public type MetavarsFrozen = {
+            //  totalChildren: Nat32;
+             boundUntil: ?Nat32; 
+             cooldownUntil: ?Nat32; 
+        };
+
+        public func MetavarsFreeze(a:Metavars) : MetavarsFrozen {
             {
-            content= a.content;
-            thumb= a.thumb;
-            classId= a.classId;
-            entropy= a.entropy;
-            created= a.created;
-            boundUntil= a.boundUntil;
-            cooldownUntil= a.cooldownUntil;
+            //  totalChildren= a.totalChildren;
+             boundUntil= a.boundUntil; 
+             cooldownUntil= a.cooldownUntil; 
             }
         };
 
-        public type MetadataOut = {
-                content: ?Media;
-                thumb:?Media;
-                classId: ItemClassId;
-                entropy: Blob;
-                created: Nat32;
-                boundUntil: ?Nat32;
-                cooldownUntil:?Nat32;
-        };
+  
 
         public type MetadataResponse = Result.Result<
-            MetadataOut,
+            {data: Metadata; vars:MetavarsFrozen},
             CommonError
         >;
 
@@ -260,9 +292,8 @@ module {
 
         public type MintRequest = {
             to       : User;
-            classId: ItemClassId;   
-            // media: ?Media;
-            // thumb: ?URL;    
+            metadata : MetadataInput;
+     
         };
 
         public type UploadChunkRequest =  {
@@ -277,7 +308,7 @@ module {
            position : {#content; #thumb};
            chunkIdx : Nat32;
         };
-        
+
         public type MintResponse = Result.Result<
            TokenIndex, {
             #Rejected;
