@@ -155,6 +155,21 @@ module {
             subaccount : ?SubAccount;
         };
 
+        public type UseRequest = {
+            user       : User;
+            subaccount : ?SubAccount;
+            token      : TokenIdentifier;
+            memo       : Memo;
+        };
+        
+        public type TransferLinkRequest = {
+            from       : User;
+            hash       : Blob;
+            token      : TokenIdentifier;
+            amount     : Balance;
+            subaccount : ?SubAccount;
+        };
+
         public type TransferResponse = Result.Result<Balance, {
             #Unauthorized : AccountIdentifier;
             #InsufficientBalance;
@@ -165,9 +180,39 @@ module {
         }>;
 
         public type BurnResponse = TransferResponse;
+
+        public type UseResponse = Result.Result<{
+            #consumed;
+            #cooldown: Nat32;
+        }, {
+            #Unauthorized : AccountIdentifier;
+            #InsufficientBalance;
+            #Rejected;
+            #InvalidToken : TokenIdentifier;
+            #OnCooldown;
+            #ExtensionError: Text;
+            #Other        : Text;
+        }>;
+
+        public type TransferLinkResponse = Result.Result<Nat32, {
+            #Unauthorized : AccountIdentifier;
+            #InsufficientBalance;
+            #Rejected;
+            #InvalidToken : TokenIdentifier;
+            #Other        : Text;
+        }>;
+
+        public type ClaimLinkRequest = {
+            to         : User;
+            key        : Blob;
+            token      : TokenIdentifier;
+        };
+
+         public type ClaimLinkResponse = Result.Result<(), {
+            #Rejected; // We wont supply a possible attacker with various errors
+         }>;
     };
 
-    public type ItemClassId = Nat;
         public type Chunks = [Nat32];
         public type ContentType = Text;
         public type ExternalRenderer = Principal;
@@ -178,9 +223,8 @@ module {
                 };
             #external: {
                 contentType: ContentType;
-                idx: ?Nat32;
+                idx: Nat32;
                 };
-            // #ipfs: Text;
             };
 
 
@@ -213,15 +257,14 @@ module {
         public type Attribute = (Text, Int16);
 
         public type Metadata = {
-        
             name: ?Text;
             lore: ?Text;
-            quality: ?Nat8;
+            quality: Nat8;
             use: ?ItemUse;
             hold: ?ItemHold;
-            transfer: ?ItemTransfer;
+            transfer: ItemTransfer;
             ttl: ?Nat32; // time to live
-            minter: ?Principal;
+            minter: Principal;
             extensionCanister: ?Principal;
             secret: Bool;
             content: ?Content;
@@ -229,52 +272,45 @@ module {
             entropy: Blob;
             created: Nat32; // in minutes
             attributes: [Attribute];
-            level: Nat8; // 0,1,2; 0lvl doesn't have parent. 1lvl has 0lvl parent; 2lvl has 1lvl parent;
-           
+            // Idea: Have maturity rating
         };
 
         public type MetadataInput = {
         
             name: ?Text;
             lore: ?Text;
-            quality: ?Nat8;
+            quality: Nat8;
             use: ?ItemUse;
             hold: ?ItemHold;
             secret: Bool;
-            transfer: ?ItemTransfer;
+            transfer: ItemTransfer;
             attributes: [Attribute];
             ttl: ?Nat32;
             content: ?Content;
             thumb: Content; 
             extensionCanister: ?Principal;
-            // parentId: ?TokenIdentifier;
-            // maxChildren: ?Nat32;
+
         };
 
         public type Metavars = {
-            // var totalChildren: Nat32;
             var boundUntil: ?Nat32; // in minutes
             var cooldownUntil: ?Nat32; // in minutes
         };
 
         public type MetavarsFrozen = {
-            //  totalChildren: Nat32;
              boundUntil: ?Nat32; 
              cooldownUntil: ?Nat32; 
         };
 
         public func MetavarsFreeze(a:Metavars) : MetavarsFrozen {
             {
-            //  totalChildren= a.totalChildren;
              boundUntil= a.boundUntil; 
              cooldownUntil= a.cooldownUntil; 
             }
         };
 
-  
-
         public type MetadataResponse = Result.Result<
-            {data: Metadata; vars:MetavarsFrozen},
+            {bearer: AccountIdentifier; data: Metadata; vars:MetavarsFrozen},
             CommonError
         >;
 
@@ -293,7 +329,6 @@ module {
         public type MintRequest = {
             to       : User;
             metadata : MetadataInput;
-     
         };
 
         public type UploadChunkRequest =  {
@@ -307,11 +342,14 @@ module {
            tokenIndex: TokenIndex;
            position : {#content; #thumb};
            chunkIdx : Nat32;
+           subaccount : ?SubAccount;
         };
 
         public type MintResponse = Result.Result<
            TokenIndex, {
             #Rejected;
+            #InsufficientBalance;
+            #Invalid: Text;
             #OutOfMemory;
           }
         >;
