@@ -257,6 +257,7 @@ module {
         public type Attribute = (Text, Int16);
 
         public type Metadata = {
+            domain: ?Text;
             name: ?Text;
             lore: ?Text;
             quality: Nat8;
@@ -276,7 +277,7 @@ module {
         };
 
         public type MetadataInput = {
-        
+            domain: ?Text;
             name: ?Text;
             lore: ?Text;
             quality: Nat8;
