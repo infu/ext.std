@@ -328,15 +328,26 @@ module {
     public type Attributes = [Attribute];
     public module Attributes = {
         public func validate(x : Attributes) : Bool {
+            Iter.size(Iter.fromArray(x)) <= 10
+            and
             Array.foldLeft(x, true, func (valid:Bool, val:Attribute) : Bool { 
                 valid and Attribute.validate(val);
             })
         }
     };
 
+    public type Sockets = [TokenIdentifier];
+    public module Sockets = {
+        public func validate(x : Sockets) : Bool {
+            Iter.size(Iter.fromArray(x)) <= 10
+        }
+    };
+
     public type Tags = [Tag];
     public module Tags = {
         public func validate(x : Tags) : Bool {
+            Iter.size(Iter.fromArray(x)) <= 10
+            and
             Array.foldLeft(x, true, func (valid:Bool, val:Tag) : Bool {
                 valid and Tag.validate(val);
             })
@@ -411,7 +422,7 @@ module {
         transfer: ItemTransfer;
         ttl: ?Nat32;
         content: ?Content;
-        thumb: Content; 
+        thumb: Content;
         extensionCanister: ?Principal;
         attributes: Attributes;
         tags: Tags;
@@ -436,17 +447,20 @@ module {
     public type Metavars = {
         var boundUntil: ?Nat32; // in minutes
         var cooldownUntil: ?Nat32; // in minutes
+        var sockets: Sockets;
     };
 
     public type MetavarsFrozen = {
             boundUntil: ?Nat32; 
             cooldownUntil: ?Nat32; 
+            sockets: Sockets;
     };
 
     public func MetavarsFreeze(a:Metavars) : MetavarsFrozen {
         {
             boundUntil= a.boundUntil; 
             cooldownUntil= a.cooldownUntil; 
+            sockets= a.sockets; 
         }
     };
 
@@ -460,9 +474,69 @@ module {
         CommonError
     >;
   
+   public type PlugRequest = {
+        user       : User;
+        subaccount : ?SubAccount;
+        socket : TokenIdentifier;
+        plug   : TokenIdentifier;
+    };
+
+    public type PlugResponse = Result.Result<
+        (), {
+        #Rejected;
+        #InsufficientBalance;
+        #InvalidToken :TokenIdentifier;
+        #Unauthorized :AccountIdentifier;
+        #Other : Text;
+        }
+    >;
+
+    public type SocketRequest = { 
+        user       : User;
+        subaccount : ?SubAccount;
+        socket : TokenIdentifier;
+        plug   : TokenIdentifier;
+    };
+
+    public type SocketResponse = Result.Result<
+        (), {
+        #Rejected;
+        #InsufficientBalance;
+        #Other : Text;
+        #InvalidToken :TokenIdentifier;
+        #Unauthorized :AccountIdentifier;
+        }
+    >;
+
+    public type UnsocketRequest = {
+        user       : User;
+        subaccount : ?SubAccount;
+        socket : TokenIdentifier;
+        plug   : TokenIdentifier;
+    };
+
+    public type UnsocketResponse = Result.Result<
+        (), {
+        #Rejected;
+        #InsufficientBalance;
+        #InvalidToken :TokenIdentifier;
+        #Unauthorized :AccountIdentifier;
+        #Other :Text;
+        }
+    >;
 
 
-  
+
+    public type UnplugResponse = Result.Result<
+        (), {
+        #Rejected;
+        #InsufficientBalance;
+        #InvalidToken :TokenIdentifier;
+        #Unauthorized :AccountIdentifier;
+        #Other :Text;
+        }
+    >;
+
 
     public module NonFungible = {
         public type BearerResponse = Result.Result<
@@ -470,10 +544,7 @@ module {
             CommonError
         >;
 
-        public type MintRequest = {
-            to       : User;
-            metadata : MetadataInput;
-        };
+      
 
         public type UploadChunkRequest =  {
            tokenIndex: TokenIndex;
@@ -487,6 +558,11 @@ module {
            position : {#content; #thumb};
            chunkIdx : Nat32;
            subaccount : ?SubAccount;
+        };
+
+        public type MintRequest = {
+            to       : User;
+            metadata : MetadataInput;
         };
 
         public type MintResponse = Result.Result<
