@@ -22,6 +22,10 @@ module {
     public type AccountIdentifier = Text;
     public type SubAccount        = [Nat8];
 
+    public func OptValid<A>(v:?A, f: (A) -> Bool) : Bool {
+        switch(v) {case (?z) f(z); case(null) true }
+    };
+
     public module AccountIdentifier = {
         public func equal(a : AccountIdentifier, b : AccountIdentifier) : Bool {
             let aRaw = switch (Hex.decode(a)) {
@@ -213,112 +217,252 @@ module {
          }>;
     };
 
-        public type Chunks = [Nat32];
-        public type ContentType = Text;
-        public type ExternalRenderer = Principal;
-        public type Content = {
-            #internal: {
-                contentType: ContentType;
-                size: Nat32;
-                };
-            #external: {
-                contentType: ContentType;
-                idx: Nat32;
-                };
-            };
 
 
-        public type ItemUse = {
-            #cooldown: {
-                desc: Text;
-                duration: Nat32;
-                useId: Text;
-            };
 
-            #consumable : {
-                desc: Text;
-                useId: Text;
-            };
-        };
 
-        public type ItemHold = {
-             #external: {
-                desc: Text;
-                holdId: Text;
-             }
-        };
+
+    public type CustomId = Text;
+    public module CustomId = {
+        public func validate(t : CustomId) : Bool {
+            t.size() <= 32 //TODO: Make real domain name verification.
+        } 
+    };
+
+    public type Chunks = [Nat32];
+
+    public type ContentType = Text;
+    public module ContentType = {
+        public func validate(t : ContentType) : Bool {
+            t.size() <= 32 //TODO: Make real domain name verification.
+        } 
+    };
     
-        public type ItemTransfer = {
-            #unrestricted;
-            #bindsForever;
-            #bindsDuration: Nat32;
+    public type ExternalRenderer = Principal;
+    public type Content = {
+        #internal: {
+            contentType: ContentType;
+            size: Nat32;
+            };
+        #external: {
+            contentType: ContentType;
+            idx: Nat32;
+            };
         };
 
-        public type Attribute = (Text, Int16);
-
-        public type Metadata = {
-            domain: ?Text;
-            name: ?Text;
-            lore: ?Text;
-            quality: Nat8;
-            use: ?ItemUse;
-            hold: ?ItemHold;
-            transfer: ItemTransfer;
-            ttl: ?Nat32; // time to live
-            minter: Principal;
-            extensionCanister: ?Principal;
-            secret: Bool;
-            content: ?Content;
-            thumb: Content;    // may overwrite class
-            entropy: Blob;
-            created: Nat32; // in minutes
-            attributes: [Attribute];
-            // Idea: Have maturity rating
-        };
-
-        public type MetadataInput = {
-            domain: ?Text;
-            name: ?Text;
-            lore: ?Text;
-            quality: Nat8;
-            use: ?ItemUse;
-            hold: ?ItemHold;
-            secret: Bool;
-            transfer: ItemTransfer;
-            attributes: [Attribute];
-            ttl: ?Nat32;
-            content: ?Content;
-            thumb: Content; 
-            extensionCanister: ?Principal;
-
-        };
-
-        public type Metavars = {
-            var boundUntil: ?Nat32; // in minutes
-            var cooldownUntil: ?Nat32; // in minutes
-        };
-
-        public type MetavarsFrozen = {
-             boundUntil: ?Nat32; 
-             cooldownUntil: ?Nat32; 
-        };
-
-        public func MetavarsFreeze(a:Metavars) : MetavarsFrozen {
-            {
-             boundUntil= a.boundUntil; 
-             cooldownUntil= a.cooldownUntil; 
+    public module Content = {
+        public func validate(x : Content) : Bool {
+            switch(x) {
+                case (#internal({contentType; size})) {
+                    ContentType.validate(contentType)
+                };
+                case (#external({contentType; idx})) {
+                        ContentType.validate(contentType)
+                }
             }
+        }
+    };
+
+    public type EffectDesc = Text;
+    public module EffectDesc = {
+        public func validate(t : EffectDesc) : Bool {
+            t.size() <= 256
+        }
+    };
+
+    public type ItemUse = {
+        #cooldown: {
+            desc: EffectDesc;
+            duration: Nat32;
+            useId: CustomId;
         };
 
-        public type MetadataResponse = Result.Result<
-            {bearer: AccountIdentifier; data: Metadata; vars:MetavarsFrozen},
-            CommonError
-        >;
+        #consumable : {
+            desc: EffectDesc;
+            useId: CustomId;
+        };
+    };
+    
+    public module ItemUse = {
+        public func validate(t : ItemUse) : Bool {
+            switch(t) {
+                case (#cooldown({desc; duration; useId})) {
+                    CustomId.validate(useId) and EffectDesc.validate(desc)
+                };
+                case (#consumable({desc; useId})) {
+                    CustomId.validate(useId) and EffectDesc.validate(desc)
+                }
+            }
+        }
+    };
 
-        public type SupplyResponse = Result.Result<
-            Balance,
-            CommonError
-        >;
+    public type ItemHold = {
+            #external: {
+            desc: EffectDesc;
+            holdId: CustomId;
+            }
+    };
+    public module ItemHold = {
+        public func validate(t : ItemHold) : Bool {
+            switch(t) {
+                case (#external({desc; holdId})) {
+                    CustomId.validate(holdId) and EffectDesc.validate(desc)
+                };
+            }
+        }
+    };
+
+    public type ItemTransfer = {
+        #unrestricted;
+        #bindsForever;
+        #bindsDuration: Nat32;
+    };
+
+    public type Attribute = (Text, Nat16);
+    public module Attribute = {
+        public func validate((a,n) : Attribute) : Bool {
+            (a.size() <= 24)
+        }
+    };
+
+    public type Attributes = [Attribute];
+    public module Attributes = {
+        public func validate(x : Attributes) : Bool {
+            Array.foldLeft(x, true, func (valid:Bool, val:Attribute) : Bool { 
+                valid and Attribute.validate(val);
+            })
+        }
+    };
+
+    public type Tags = [Tag];
+    public module Tags = {
+        public func validate(x : Tags) : Bool {
+            Array.foldLeft(x, true, func (valid:Bool, val:Tag) : Bool {
+                valid and Tag.validate(val);
+            })
+        }
+    };
+
+    public type Tag = Text;
+    public module Tag = {
+        public func validate(t : Tag) : Bool {
+            t.size() <= 24
+        }
+    };
+
+    public type ItemName = Text;
+    public module ItemName = {
+        public func validate(t : ItemName) : Bool {
+            t.size() <= 96
+        }
+    };
+
+    public type ItemLore = Text;
+    public module ItemLore = {
+        public func validate(t : ItemLore) : Bool {
+            t.size() <= 256
+        }
+    };
+
+    public type DomainName = Text;
+    public module DomainName = {
+        public func validate(t : DomainName) : Bool {
+            t.size() <= 64 //TODO: Make real domain name verification.
+        }
+    };
+        
+    public type Metadata = {
+        domain: ?DomainName;
+        name: ?ItemName;
+        lore: ?ItemLore;
+        quality: Nat8;
+        use: ?ItemUse;
+        hold: ?ItemHold;
+        transfer: ItemTransfer;
+        ttl: ?Nat32; // time to live
+        minter: Principal;
+        extensionCanister: ?Principal;
+        secret: Bool;
+        content: ?Content;
+        thumb: Content;    // may overwrite class
+        entropy: Blob;
+        created: Nat32; // in minutes
+        attributes: Attributes;
+        tags:Tags;
+        custom: ?CustomData;
+        // Idea: Have maturity rating
+    };
+        
+    public type CustomData = Blob;
+    public module CustomData = {
+        public func validate(t : CustomData) : Bool {
+            t.size() <= 1024 * 50 // 50 kb 
+        }
+    };
+
+    public type MetadataInput = {
+        domain: ?Text;
+        name: ?Text;
+        lore: ?Text;
+        quality: Nat8;
+        use: ?ItemUse;
+        hold: ?ItemHold;
+        secret: Bool;
+        transfer: ItemTransfer;
+        ttl: ?Nat32;
+        content: ?Content;
+        thumb: Content; 
+        extensionCanister: ?Principal;
+        attributes: Attributes;
+        tags: Tags;
+        custom: ?CustomData;
+    };
+
+    public module MetadataInput = {
+        public func validate(m : MetadataInput) : Bool {
+            OptValid(m.domain, DomainName.validate)
+            and OptValid(m.name, ItemName.validate)
+            and OptValid(m.lore, ItemLore.validate)
+            and OptValid(m.use, ItemUse.validate)
+            and OptValid(m.hold, ItemHold.validate)
+            and OptValid(m.content, Content.validate)
+            and Content.validate(m.thumb)
+            and Attributes.validate(m.attributes)
+            and Tags.validate(m.tags)
+            and OptValid(m.custom, CustomData.validate)
+        }
+    };
+
+    public type Metavars = {
+        var boundUntil: ?Nat32; // in minutes
+        var cooldownUntil: ?Nat32; // in minutes
+    };
+
+    public type MetavarsFrozen = {
+            boundUntil: ?Nat32; 
+            cooldownUntil: ?Nat32; 
+    };
+
+    public func MetavarsFreeze(a:Metavars) : MetavarsFrozen {
+        {
+            boundUntil= a.boundUntil; 
+            cooldownUntil= a.cooldownUntil; 
+        }
+    };
+
+    public type MetadataResponse = Result.Result<
+        {bearer: AccountIdentifier; data: Metadata; vars:MetavarsFrozen},
+        CommonError
+    >;
+
+    public type SupplyResponse = Result.Result<
+        Balance,
+        CommonError
+    >;
+  
+
+
+
   
 
     public module NonFungible = {
