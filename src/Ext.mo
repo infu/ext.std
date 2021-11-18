@@ -27,6 +27,26 @@ module {
     };
 
     public module AccountIdentifier = {
+
+        public func validate(a: AccountIdentifier) : Bool {
+                a.size() == 64;
+        };
+
+        public func normalize(a: AccountIdentifier) : AccountIdentifier {
+            assert(a.size() == 64);
+            Text.translate(a, func (c:Char) : Text {
+                    Text.fromChar(switch (c) {
+                        case ('A') 'a';
+                        case ('B') 'b';
+                        case ('C') 'c';
+                        case ('D') 'd';
+                        case ('E') 'e';
+                        case ('F') 'f';
+                        case (_)  c; 
+                    });
+             })
+        };
+        
         public func equal(a : AccountIdentifier, b : AccountIdentifier) : Bool {
             let aRaw = switch (Hex.decode(a)) {
                 case (#err(_)) { assert(false); []; };
@@ -48,7 +68,7 @@ module {
         };
 
         public func fromPrincipal(p : Principal, subAccount : ?SubAccount) : AccountIdentifier {
-            RawAccountId.toText(RawAccountId.fromPrincipal(p, subAccount));
+            AccountIdentifier.normalize(RawAccountId.toText(RawAccountId.fromPrincipal(p, subAccount)));
         };
     };
 
@@ -109,6 +129,15 @@ module {
     };
 
     public module User = {
+        public func validate(u:User) : Bool {
+            switch (u) {
+                case (#address(address)) { AccountIdentifier.validate(address); };
+                case (#principal(principal)) {
+                    true
+                };
+            };
+        };
+
         public func equal(a : User, b : User) : Bool {
             let aAddress = toAccountIdentifier(a);
             let bAddress = toAccountIdentifier(b);
@@ -121,7 +150,7 @@ module {
 
         public func toAccountIdentifier(u : User) : AccountIdentifier {
             switch (u) {
-                case (#address(address)) { address; };
+                case (#address(address)) { AccountIdentifier.normalize(address); };
                 case (#principal(principal)) {
                     AccountIdentifier.fromPrincipal(principal, null);
                 };
@@ -214,6 +243,7 @@ module {
 
          public type ClaimLinkResponse = Result.Result<(), {
             #Rejected; // We wont supply a possible attacker with various errors
+            #Other: Text
          }>;
     };
 
@@ -488,6 +518,7 @@ module {
         #InvalidToken :TokenIdentifier;
         #Unauthorized :AccountIdentifier;
         #Other : Text;
+        #SocketError: SocketError;
         }
     >;
 
@@ -498,14 +529,18 @@ module {
         plug   : TokenIdentifier;
     };
 
-    public type SocketResponse = Result.Result<
-        (), {
+    public type SocketError = {
         #Rejected;
         #InsufficientBalance;
         #Other : Text;
+        #NotLegitimateCaller;
+        #SocketsFull;
         #InvalidToken :TokenIdentifier;
         #Unauthorized :AccountIdentifier;
-        }
+        };
+
+    public type SocketResponse = Result.Result<
+        (), SocketError
     >;
 
     public type UnsocketRequest = {
@@ -522,19 +557,22 @@ module {
         #InvalidToken :TokenIdentifier;
         #Unauthorized :AccountIdentifier;
         #Other :Text;
+        #UnplugError: UnplugError
         }
     >;
 
 
-
-    public type UnplugResponse = Result.Result<
-        (), {
+    public type UnplugError = {
         #Rejected;
         #InsufficientBalance;
         #InvalidToken :TokenIdentifier;
         #Unauthorized :AccountIdentifier;
         #Other :Text;
-        }
+        #NotLegitimateCaller;
+        };
+
+    public type UnplugResponse = Result.Result<
+        (), UnplugError
     >;
 
 
