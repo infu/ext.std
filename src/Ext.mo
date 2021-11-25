@@ -16,8 +16,7 @@ import RawAccountId "mo:principal/AccountIdentifier";
 import Result "mo:base/Result";
 import Text "mo:base/Text";
 
-// This modules follows Toniq Labs' EXT Standard.
-// Lastest commit: 1f7ef3e.
+
 module {
     public type AccountIdentifier = Text;
     public type SubAccount        = [Nat8];
@@ -267,9 +266,19 @@ module {
             t.size() <= 32 //TODO: Make real domain name verification.
         } 
     };
-    
+    public type IPFS_CID = Text;
+    public module IPFS_CID = {
+        public func validate(t : IPFS_CID) : Bool {
+            t.size() <= 64
+        } 
+    };
     public type ExternalRenderer = Principal;
     public type Content = {
+        #ipfs: {
+            contentType: ContentType;
+            size: Nat32;
+            cid: IPFS_CID;
+            };
         #internal: {
             contentType: ContentType;
             size: Nat32;
@@ -288,6 +297,10 @@ module {
                 };
                 case (#external({contentType; idx})) {
                         ContentType.validate(contentType)
+                };
+                case (#ipfs({contentType; cid})) {
+                        ContentType.validate(contentType)
+                        and IPFS_CID.validate(cid)
                 }
             }
         }
@@ -332,6 +345,7 @@ module {
             holdId: CustomId;
             }
     };
+
     public module ItemHold = {
         public func validate(t : ItemHold) : Bool {
             switch(t) {
@@ -425,7 +439,7 @@ module {
         extensionCanister: ?Principal;
         secret: Bool;
         content: ?Content;
-        thumb: Content;    // may overwrite class
+        thumb: Content; // may overwrite class
         entropy: Blob;
         created: Nat32; // in minutes
         attributes: Attributes;
@@ -581,8 +595,6 @@ module {
             AccountIdentifier, 
             CommonError
         >;
-
-      
 
         public type UploadChunkRequest =  {
            tokenIndex: TokenIndex;
